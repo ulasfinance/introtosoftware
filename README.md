@@ -1,11 +1,10 @@
-# 🍽️ Food Delivery Backend
+#  Food Delivery Backend
 
 Backend study project for a **Food Delivery Service**.
 The project replicates the functionality of an existing API specification and demonstrates backend development best practices together with software engineering documentation.
 
----
 
-## 📌 Project Overview
+##  Project Overview
 
 This project implements the backend of a **Food Delivery Service** with the following features:
 
@@ -21,9 +20,8 @@ The project is divided into two parts:
 1. **Backend Development** – creation of the backend application and API.
 2. **Software Engineering Documentation** – proper use of Git workflow, task/bug tracking, time logs, and wiki pages.
 
----
 
-## 🏗 Architecture
+##  Architecture
 
 The solution follows a **3-layered architecture**:
 
@@ -31,9 +29,8 @@ The solution follows a **3-layered architecture**:
 * **BusinessLogic** → core services, business rules, validation
 * **DataAccess** → database models, migrations, repositories
 
----
 
-## 🔀 Git Workflow
+##  Git Workflow
 
 Branching strategy:
 
@@ -47,7 +44,7 @@ After testing, `develop` is merged → `main`.
 
 ---
 
-## 📂 Repository Structure
+##  Repository Structure
 
 ```
 /FoodDeliveryBackend
@@ -63,9 +60,9 @@ After testing, `develop` is merged → `main`.
     └── feature_request.md
 ```
 
----
 
-## 🚀 Getting Started
+
+##  Getting Started
 
 ### 1. Prerequisites
 
@@ -100,16 +97,14 @@ dotnet ef database update
 dotnet run
 ```
 
----
 
-## 🧪 Testing
+##  Testing
 
 * Unit tests will be placed under `/tests` (to be added later).
 * Postman collection for endpoints will be provided.
 
----
 
-## 📋 Task & Bug Tracking
+##  Task & Bug Tracking
 
 * Tasks and bugs are logged in **GitHub Issues**.
 * Each issue includes:
@@ -120,9 +115,8 @@ dotnet run
 
 A full history of tasks is maintained in [`TASK_LOG.md`](TASK_LOG.md).
 
----
 
-## 📖 Documentation
+##  Documentation
 
 All project documentation is maintained in the **Wiki**:
 
@@ -131,9 +125,8 @@ All project documentation is maintained in the **Wiki**:
 * Task and bug history
 * Setup guide
 
----
 
-## 👥 Authors
+##  Authors
 
 * Ulas
 * For **Backend Development** & **Intro to Software Engineering** coursework
