@@ -1,0 +1,14 @@
+# Visual Studio cache and temp files
+.vs/
+*.user
+*.suo
+*.vsidx
+
+# Build results
+bin/
+obj/
+
+# Others
+*.log
+*.db
+*.opendb
