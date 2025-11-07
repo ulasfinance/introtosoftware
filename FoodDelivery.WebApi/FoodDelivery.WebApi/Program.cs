@@ -119,6 +119,25 @@ app.MapPut("/profile/{email}", (string email, User updated) =>
     return Results.Ok(user);
 });
 
+// FEATURE-PROFILE COMMIT #1: Added endpoint for all user profiles
+app.MapGet("/profiles", () =>
+{
+    if (!users.Any())
+        return Results.NotFound("No users found");
+
+    var result = users.Select(u => new
+    {
+        u.Email,
+        u.Name,
+        u.Address,
+        u.Phone,
+        BirthDate = u.BirthDate.ToShortDateString()
+    });
+
+    return Results.Ok(result);
+});
+
+
 app.MapGet("/menu", (string? search) =>
 {
     IEnumerable<MenuItem> filtered = menu;
