@@ -128,6 +128,23 @@ app.MapGet("/menu/vegetarian", () =>
     return Results.Ok(vegetarianMenu);
 });
 
+app.MapGet("/menu/top-rated", () =>
+{
+    var topRated = menu
+        .OrderByDescending(m => m.Rating)
+        .Take(3)
+        .Select(m => new
+        {
+            m.Id,
+            m.Name,
+            m.Category,
+            m.Rating,
+            Price = $"${m.Price:0.00}"
+        });
+
+    return Results.Ok(topRated);
+});
+
 
 var result = filtered.Select(m => new
     {
