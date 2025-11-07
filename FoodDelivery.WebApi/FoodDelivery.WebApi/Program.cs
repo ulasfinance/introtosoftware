@@ -203,6 +203,21 @@ app.MapPut("/orders/{orderId}/confirm", (int orderId) =>
     return Results.Ok(order);
 });
 
+app.MapGet("/status", () =>
+{
+    var info = new
+    {
+        Server = "FoodDelivery Backend API",
+        Status = "Running",
+        Time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+        ActiveUsers = users.Count,
+        MenuItems = menu.Count,
+        Orders = orders.Count
+    };
+
+    return Results.Ok(info);
+});
+
 
 app.Run();
 
