@@ -1,36 +1,167 @@
-using FoodDelivery.DataAccess.Context;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Register DbContext with DI
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// Add controllers
-builder.Services.AddControllers();
-
-// Add Swagger
+// Add services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod());
+});
 
 var app = builder.Build();
 
-// Configure middleware
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI();
+app.UseCors("AllowAll");
+
+// Mock data
+var users = new List<User>();
+var menu = new List<MenuItem>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
+    new MenuItem { Id = 1, Name = "Pizza", Price = 10.99, Category = "Italian", Vegetarian = false, Rating = 4.5 },
+    new MenuItem { Id = 2, Name = "Veggie Burger", Price = 8.49, Category = "American", Vegetarian = true, Rating = 4.8 }
+};
+var carts = new Dictionary<string, List<MenuItem>>();
+var orders = new List<Order>();
+
+// Registration
+app.MapPost("/register", (User user) =>
+{
+    if (users.Any(u => u.Email == user.Email))
+        return Results.BadRequest("User already exists");
+
+    users.Add(user);
+    return Results.Ok(new { Token = Guid.NewGuid().ToString() });
+});
+
+// Login
+app.MapPost("/login", (LoginRequest req) =>
+{
+    var user = users.FirstOrDefault(u => u.Email == req.Email && u.Password == req.Password);
+    return user == null
+        ? Results.Unauthorized()
+        : Results.Ok(new { Token = Guid.NewGuid().ToString() });
+});
+
+// Profile
+app.MapGet("/profile/{email}", (string email) =>
+{
+    var user = users.FirstOrDefault(u => u.Email == email);
+    return user == null ? Results.NotFound() : Results.Ok(user);
+});
+
+app.MapPut("/profile/{email}", (string email, User updated) =>
+{
+    var user = users.FirstOrDefault(u => u.Email == email);
+    if (user == null) return Results.NotFound();
+
+    user.Name = updated.Name;
+    user.Address = updated.Address;
+    user.Phone = updated.Phone;
+    user.BirthDate = updated.BirthDate;
+    return Results.Ok(user);
+});
+
+// Menu
+app.MapGet("/menu", () => Results.Ok(menu));
+
+// Cart
+app.MapPost("/cart/{email}/{itemId}", (string email, int itemId) =>
+{
+    var item = menu.FirstOrDefault(m => m.Id == itemId);
+    if (item == null) return Results.NotFound();
+
+    if (!carts.ContainsKey(email)) carts[email] = new List<MenuItem>();
+    carts[email].Add(item);
+    return Results.Ok(carts[email]);
+});
+
+app.MapGet("/cart/{email}", (string email) =>
+{
+    return carts.ContainsKey(email)
+        ? Results.Ok(carts[email])
+        : Results.Ok(new List<MenuItem>());
+});
+
+// Orders
+app.MapPost("/orders/{email}", (string email) =>
+{
+    if (!carts.ContainsKey(email) || !carts[email].Any())
+        return Results.BadRequest("Cart empty");
+
+    var newOrder = new Order
     {
-        // Show Swagger UI at root (https://localhost:5001/)
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "FoodDelivery API v1");
-    });
-}
+        Id = orders.Count + 1,
+        UserEmail = email,
+        Items = carts[email].ToList(),
+        Status = "In Process",
+        DeliveryTime = DateTime.Now.AddHours(1)
+    };
 
-app.UseHttpsRedirection();
+    orders.Add(newOrder);
+    carts[email].Clear();
 
-app.UseAuthorization();
+    return Results.Ok(newOrder);
+});
 
-app.MapControllers();
+app.MapGet("/orders/{email}", (string email) =>
+{
+    var userOrders = orders.Where(o => o.UserEmail == email).ToList();
+    return Results.Ok(userOrders);
+});
+
+app.MapPut("/orders/{orderId}/confirm", (int orderId) =>
+{
+    var order = orders.FirstOrDefault(o => o.Id == orderId);
+    if (order == null) return Results.NotFound();
+    if (order.Status != "In Process") return Results.BadRequest("Already confirmed");
+
+    order.Status = "Delivered";
+    return Results.Ok(order);
+});
 
 app.Run();
+
+record User
+{
+    public string Email { get; set; }
+    public string Password { get; set; }
+    public string Name { get; set; }
+    public string Address { get; set; }
+    public string Phone { get; set; }
+    public DateTime BirthDate { get; set; }
+}
+
+record LoginRequest
+{
+    public string Email { get; set; }
+    public string Password { get; set; }
+}
+
+record MenuItem
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public double Price { get; set; }
+    public string Category { get; set; }
+    public bool Vegetarian { get; set; }
+    public double Rating { get; set; }
+}
+
+record Order
+{
+    public int Id { get; set; }
+    public string UserEmail { get; set; }
+    public List<MenuItem> Items { get; set; }
+    public string Status { get; set; }
+    public DateTime DeliveryTime { get; set; }
+}
