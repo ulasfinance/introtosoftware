@@ -205,7 +205,7 @@ app.MapGet("/cart/{email}", (string email) =>
 // Orders
 app.MapPost("/orders/{email}", (string email) =>
 {
-    // MAIN COMMIT #3: Validate delivery time using helper
+
     if (!FoodDelivery.WebApi.Utils.ValidationHelper.IsValidDeliveryTime(DateTime.Now.AddHours(1)))
         return Results.BadRequest("Invalid delivery time (must be at least 30 minutes ahead)");
 
@@ -232,6 +232,29 @@ app.MapGet("/orders/{email}", (string email) =>
     var userOrders = orders.Where(o => o.UserEmail == email).ToList();
     return Results.Ok(userOrders);
 });
+
+app.MapGet("/orders/summary", () =>
+{
+    if (!orders.Any())
+        return Results.Ok(new
+        {
+            TotalOrders = 0,
+            Delivered = 0,
+            Cancelled = 0,
+            InProcess = 0
+        });
+
+    var summary = new
+    {
+        TotalOrders = orders.Count,
+        Delivered = orders.Count(o => o.Status == "Delivered"),
+        Cancelled = orders.Count(o => o.Status == "Cancelled"),
+        InProcess = orders.Count(o => o.Status == "In Process")
+    };
+
+    return Results.Ok(summary);
+});
+
 
 app.MapPut("/orders/{orderId}/confirm", (int orderId) =>
 {
