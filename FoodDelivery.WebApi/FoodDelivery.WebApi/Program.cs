@@ -112,8 +112,13 @@ app.MapGet("/cart/{email}", (string email) =>
 });
 
 // Orders
+// Orders
 app.MapPost("/orders/{email}", (string email) =>
 {
+    // MAIN COMMIT #3: Validate delivery time using helper
+    if (!FoodDelivery.WebApi.Utils.ValidationHelper.IsValidDeliveryTime(DateTime.Now.AddHours(1)))
+        return Results.BadRequest("Invalid delivery time (must be at least 30 minutes ahead)");
+
     if (!carts.ContainsKey(email) || !carts[email].Any())
         return Results.BadRequest("Cart empty");
 
@@ -147,6 +152,7 @@ app.MapPut("/orders/{orderId}/confirm", (int orderId) =>
     order.Status = "Delivered";
     return Results.Ok(order);
 });
+
 
 app.Run();
 
