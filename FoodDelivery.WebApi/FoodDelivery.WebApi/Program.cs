@@ -45,13 +45,59 @@ app.MapPost("/register", (User user) =>
     return Results.Ok(new { Token = Guid.NewGuid().ToString() });
 });
 
-// Login
+// FEATURE-AUTH: Fake JWT helper
+string GenerateFakeToken(string email)
+{
+    return Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{email}:{Guid.NewGuid()}"));
+}
+
+// FEATURE-AUTH: Decode fake JWT
+string? DecodeFakeToken(string token)
+{
+    try
+    {
+        var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(token));
+        return decoded.Split(':')[0];
+    }
+    catch
+    {
+        return null;
+    }
+}
+
+// FEATURE-AUTH COMMIT #1: Login endpoint with fake JWT generator
 app.MapPost("/login", (LoginRequest req) =>
 {
     var user = users.FirstOrDefault(u => u.Email == req.Email && u.Password == req.Password);
-    return user == null
-        ? Results.Unauthorized()
-        : Results.Ok(new { Token = Guid.NewGuid().ToString() });
+    if (user == null)
+        return Results.Unauthorized();
+
+    var token = GenerateFakeToken(user.Email);
+    return Results.Ok(new
+    {
+        Token = token,
+        Message = "Login successful - fake JWT generated"
+    });
+});
+
+// FEATURE-AUTH COMMIT #2: Protected /me endpoint to verify token
+app.MapGet("/me", (string token) =>
+{
+    var email = DecodeFakeToken(token);
+    if (email == null)
+        return Results.Unauthorized();
+
+    return Results.Ok(new { AuthenticatedUser = email });
+});
+
+// FEATURE-AUTH COMMIT #3: Added logout endpoint to clear fake token
+app.MapPost("/logout", (string token) =>
+{
+    var email = DecodeFakeToken(token);
+    if (email == null)
+        return Results.Unauthorized();
+
+    return Results.Ok(new { Message = $"User {email} logged out successfully" });
 });
 
 // Profile
@@ -73,17 +119,26 @@ app.MapPut("/profile/{email}", (string email, User updated) =>
     return Results.Ok(user);
 });
 
-app.MapGet("/menu", (string? sortBy, string? category) =>
+// Combined /menu endpoints with search, sorting, filtering, vegetarian, and top-rated options
+app.MapGet("/menu", (string? search, string? sortBy, string? category) =>
 {
     IEnumerable<MenuItem> filtered = menu;
 
-    // Filter by category if provided
+    // 🔍 Search by name or category
+    if (!string.IsNullOrWhiteSpace(search))
+    {
+        filtered = filtered.Where(m =>
+            m.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            m.Category.Contains(search, StringComparison.OrdinalIgnoreCase));
+    }
+
+    // 🗂️ Filter by category
     if (!string.IsNullOrWhiteSpace(category))
     {
         filtered = filtered.Where(m => m.Category.Equals(category, StringComparison.OrdinalIgnoreCase));
     }
 
-    // Apply sorting if provided
+    // ↕️ Apply sorting
     if (!string.IsNullOrEmpty(sortBy))
     {
         filtered = sortBy.ToLower() switch
@@ -111,7 +166,7 @@ app.MapGet("/menu", (string? sortBy, string? category) =>
     return Results.Ok(result);
 });
 
-// Quick endpoint for vegetarian dishes only
+// 🌱 Vegetarian-only quick filter
 app.MapGet("/menu/vegetarian", () =>
 {
     var vegetarianMenu = menu
@@ -128,6 +183,7 @@ app.MapGet("/menu/vegetarian", () =>
     return Results.Ok(vegetarianMenu);
 });
 
+// ⭐ Top-rated menu items
 app.MapGet("/menu/top-rated", () =>
 {
     var topRated = menu
@@ -144,21 +200,6 @@ app.MapGet("/menu/top-rated", () =>
 
     return Results.Ok(topRated);
 });
-
-
-var result = filtered.Select(m => new
-    {
-        m.Id,
-        m.Name,
-        m.Category,
-        m.Vegetarian,
-        m.Rating,
-        Price = $"${m.Price:0.00}"
-    });
-
-    return Results.Ok(result);
-});
-//Add category filtering to /menu endpoint
 
 
 // Cart
@@ -219,6 +260,21 @@ app.MapPut("/orders/{orderId}/confirm", (int orderId) =>
 
     order.Status = "Delivered";
     return Results.Ok(order);
+});
+
+app.MapGet("/status", () =>
+{
+    var info = new
+    {
+        Server = "FoodDelivery Backend API",
+        Status = "Running",
+        Time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+        ActiveUsers = users.Count,
+        MenuItems = menu.Count,
+        Orders = orders.Count
+    };
+
+    return Results.Ok(info);
 });
 
 
