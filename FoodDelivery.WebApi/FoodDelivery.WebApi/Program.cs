@@ -121,6 +121,8 @@ app.MapPut("/profile/{email}", (string email, User updated) =>
 
 app.MapGet("/menu", (string? sortBy, string? category) =>
 // Combined /menu endpoints with search, sorting, filtering, vegetarian, and top-rated options
+
+//check conflicts
 app.MapGet("/menu", (string? search, string? sortBy, string? category) =>
 {
     IEnumerable<MenuItem> filtered = menu;
@@ -255,6 +257,21 @@ app.MapGet("/status", () =>
 
     return Results.Ok(info);
 });
+
+app.MapGet("/about", () =>
+{
+    var info = new
+    {
+        Project = "Food Delivery Backend API",
+        Version = "1.0.0",
+        Description = "A demo backend for managing food delivery services, built with minimal APIs.",
+        Contributors = new[] { "Ulas Tuz" },
+        GitHub = "https://github.com/ulasfinance/introtosoftware"
+    };
+
+    return Results.Ok(info);
+});
+
 
 
 app.Run();
