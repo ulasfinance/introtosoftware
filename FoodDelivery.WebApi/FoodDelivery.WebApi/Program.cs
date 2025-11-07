@@ -88,6 +88,16 @@ app.MapGet("/me", (string token) =>
     return Results.Ok(new { AuthenticatedUser = email });
 });
 
+// FEATURE-AUTH COMMIT #3: Added logout endpoint to clear fake token
+app.MapPost("/logout", (string token) =>
+{
+    var email = DecodeFakeToken(token);
+    if (email == null)
+        return Results.Unauthorized();
+
+    return Results.Ok(new { Message = $"User {email} logged out successfully" });
+});
+
 // Profile
 app.MapGet("/profile/{email}", (string email) =>
 {
