@@ -1,9 +1,10 @@
-﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -47,13 +48,12 @@ app.MapPost("/register", (User user) =>
     return Results.Ok(new { Token = Guid.NewGuid().ToString() });
 });
 
-// FEATURE-AUTH: Fake JWT helper
+// FEATURE-AUTH: Fake JWT helpers
 string GenerateFakeToken(string email)
 {
     return Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{email}:{Guid.NewGuid()}"));
 }
 
-// FEATURE-AUTH: Decode fake JWT
 string? DecodeFakeToken(string token)
 {
     try
@@ -67,7 +67,7 @@ string? DecodeFakeToken(string token)
     }
 }
 
-// FEATURE-AUTH COMMIT #1: Login endpoint with fake JWT generator
+// Authentication endpoints
 app.MapPost("/login", (LoginRequest req) =>
 {
     var user = users.FirstOrDefault(u => u.Email == req.Email && u.Password == req.Password);
@@ -75,14 +75,9 @@ app.MapPost("/login", (LoginRequest req) =>
         return Results.Unauthorized();
 
     var token = GenerateFakeToken(user.Email);
-    return Results.Ok(new
-    {
-        Token = token,
-        Message = "Login successful - fake JWT generated"
-    });
+    return Results.Ok(new { Token = token, Message = "Login successful - fake JWT generated" });
 });
 
-// FEATURE-AUTH COMMIT #2: Protected /me endpoint to verify token
 app.MapGet("/me", (string token) =>
 {
     var email = DecodeFakeToken(token);
@@ -92,7 +87,6 @@ app.MapGet("/me", (string token) =>
     return Results.Ok(new { AuthenticatedUser = email });
 });
 
-// FEATURE-AUTH COMMIT #3: Added logout endpoint to clear fake token
 app.MapPost("/logout", (string token) =>
 {
     var email = DecodeFakeToken(token);
@@ -102,7 +96,7 @@ app.MapPost("/logout", (string token) =>
     return Results.Ok(new { Message = $"User {email} logged out successfully" });
 });
 
-// Profile
+// -------------------- PROFILE --------------------
 app.MapGet("/profile/{email}", (string email) =>
 {
     var user = users.FirstOrDefault(u => u.Email == email);
@@ -121,8 +115,6 @@ app.MapPut("/profile/{email}", (string email, User updated) =>
     return Results.Ok(user);
 });
 
-// FEATURE-PROFILE COMMIT #4: Added profile summary and user activity endpoints
-
 // 📊 Summary of all users
 app.MapGet("/profiles/summary", () =>
 {
@@ -138,7 +130,6 @@ app.MapGet("/profiles/summary", () =>
     }
 
     var today = DateTime.Today;
-
     var userAges = users.Select(u => today.Year - u.BirthDate.Year -
         (u.BirthDate.Date > today.AddYears(-(today.Year - u.BirthDate.Year)) ? 1 : 0));
 
@@ -156,7 +147,6 @@ app.MapGet("/profiles/summary", () =>
 // 🕒 Simulated activity tracking
 var userLastActivity = new Dictionary<string, DateTime>();
 
-// Simulate login event
 app.MapPost("/profile/{email}/login", (string email) =>
 {
     var user = users.FirstOrDefault(u => u.Email == email);
@@ -167,40 +157,13 @@ app.MapPost("/profile/{email}/login", (string email) =>
     return Results.Ok(new { Message = $"User {email} logged in at {DateTime.Now}" });
 });
 
-// Retrieve last login info
 app.MapGet("/profile/{email}/activity", (string email) =>
 {
     if (!userLastActivity.ContainsKey(email))
         return Results.NotFound($"No recent activity found for {email}.");
 
-    return Results.Ok(new
-    {
-        Email = email,
-        LastLogin = userLastActivity[email],
-        Status = "Active"
-    });
+    return Results.Ok(new { Email = email, LastLogin = userLastActivity[email], Status = "Active" });
 });
-
-
-app.MapGet("/menu", (string? sortBy, string? category) =>
-// Combined /menu endpoints with search, sorting, filtering, vegetarian, and top-rated options
-app.MapGet("/menu", (string? search, string? sortBy, string? category) =>
-{
-    if (!users.Any())
-        return Results.NotFound("No users found");
-
-    var result = users.Select(u => new
-    {
-        u.Email,
-        u.Name,
-        u.Address,
-        u.Phone,
-        BirthDate = u.BirthDate.ToShortDateString()
-    });
-
-    return Results.Ok(result);
-});
-
 
 app.MapDelete("/profile/{email}", (string email) =>
 {
@@ -212,16 +175,35 @@ app.MapDelete("/profile/{email}", (string email) =>
     return Results.Ok(new { Message = $"Profile for {email} deleted successfully." });
 });
 
-
-
-app.MapGet("/menu", (string? search) =>
+// -------------------- MENU --------------------
+app.MapGet("/menu", (string? search, string? sortBy, string? category) =>
 {
     IEnumerable<MenuItem> filtered = menu;
 
     if (!string.IsNullOrWhiteSpace(search))
     {
-        filtered = menu.Where(m => m.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
-                                 || m.Category.Contains(search, StringComparison.OrdinalIgnoreCase));
+        filtered = filtered.Where(m =>
+            m.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+            m.Category.Contains(search, StringComparison.OrdinalIgnoreCase));
+    }
+
+    if (!string.IsNullOrWhiteSpace(category))
+    {
+        filtered = filtered.Where(m => m.Category.Equals(category, StringComparison.OrdinalIgnoreCase));
+    }
+
+    if (!string.IsNullOrEmpty(sortBy))
+    {
+        filtered = sortBy.ToLower() switch
+        {
+            "name_asc" => filtered.OrderBy(m => m.Name),
+            "name_desc" => filtered.OrderByDescending(m => m.Name),
+            "price_asc" => filtered.OrderBy(m => m.Price),
+            "price_desc" => filtered.OrderByDescending(m => m.Price),
+            "rating_asc" => filtered.OrderBy(m => m.Rating),
+            "rating_desc" => filtered.OrderByDescending(m => m.Rating),
+            _ => filtered
+        };
     }
 
     var result = filtered.Select(m => new
@@ -237,8 +219,40 @@ app.MapGet("/menu", (string? search) =>
     return Results.Ok(result);
 });
 
+app.MapGet("/menu/vegetarian", () =>
+{
+    var vegetarianMenu = menu
+        .Where(m => m.Vegetarian)
+        .Select(m => new
+        {
+            m.Id,
+            m.Name,
+            m.Category,
+            m.Rating,
+            Price = $"${m.Price:0.00}"
+        });
 
-// Cart
+    return Results.Ok(vegetarianMenu);
+});
+
+app.MapGet("/menu/top-rated", () =>
+{
+    var topRated = menu
+        .OrderByDescending(m => m.Rating)
+        .Take(3)
+        .Select(m => new
+        {
+            m.Id,
+            m.Name,
+            m.Category,
+            m.Rating,
+            Price = $"${m.Price:0.00}"
+        });
+
+    return Results.Ok(topRated);
+});
+
+// -------------------- CART --------------------
 app.MapPost("/cart/{email}/{itemId}", (string email, int itemId) =>
 {
     var item = menu.FirstOrDefault(m => m.Id == itemId);
@@ -256,14 +270,9 @@ app.MapGet("/cart/{email}", (string email) =>
         : Results.Ok(new List<MenuItem>());
 });
 
-// Orders
-// Orders
+// -------------------- ORDERS --------------------
 app.MapPost("/orders/{email}", (string email) =>
 {
-   
-    if (!FoodDelivery.WebApi.Utils.ValidationHelper.IsValidDeliveryTime(DateTime.Now.AddHours(1)))
-        return Results.BadRequest("Invalid delivery time (must be at least 30 minutes ahead)");
-
     if (!carts.ContainsKey(email) || !carts[email].Any())
         return Results.BadRequest("Cart empty");
 
@@ -288,6 +297,22 @@ app.MapGet("/orders/{email}", (string email) =>
     return Results.Ok(userOrders);
 });
 
+app.MapGet("/orders/summary", () =>
+{
+    if (!orders.Any())
+        return Results.Ok(new { TotalOrders = 0, Delivered = 0, Cancelled = 0, InProcess = 0 });
+
+    var summary = new
+    {
+        TotalOrders = orders.Count,
+        Delivered = orders.Count(o => o.Status == "Delivered"),
+        Cancelled = orders.Count(o => o.Status == "Cancelled"),
+        InProcess = orders.Count(o => o.Status == "In Process")
+    };
+
+    return Results.Ok(summary);
+});
+
 app.MapPut("/orders/{orderId}/confirm", (int orderId) =>
 {
     var order = orders.FirstOrDefault(o => o.Id == orderId);
@@ -298,9 +323,55 @@ app.MapPut("/orders/{orderId}/confirm", (int orderId) =>
     return Results.Ok(order);
 });
 
+// -------------------- INFO / SUPPORT --------------------
+app.MapGet("/status", () =>
+{
+    var info = new
+    {
+        Server = "FoodDelivery Backend API",
+        Status = "Running",
+        Time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+        ActiveUsers = users.Count,
+        MenuItems = menu.Count,
+        Orders = orders.Count
+    };
+
+    return Results.Ok(info);
+});
+
+app.MapGet("/about", () =>
+{
+    var info = new
+    {
+        Project = "Food Delivery Backend API",
+        Version = "1.0.0",
+        Description = "A demo backend for managing food delivery services, built with minimal APIs.",
+        Contributors = new[] { "Ulas Tuz" },
+        GitHub = "https://github.com/ulasfinance/introtosoftware"
+    };
+
+    return Results.Ok(info);
+});
+
+app.MapPost("/support", (SupportRequest req) =>
+{
+    if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Message))
+        return Results.BadRequest("Email and message are required.");
+
+    return Results.Ok(new
+    {
+        Status = "Received",
+        ConfirmationId = Guid.NewGuid(),
+        ReceivedAt = DateTime.Now,
+        Message = $"Support request from {req.Email} received successfully."
+    });
+});
+
+record SupportRequest(string Email, string Message);
 
 app.Run();
 
+// -------------------- RECORDS --------------------
 record User
 {
     public string Email { get; set; }
@@ -335,3 +406,4 @@ record Order
     public string Status { get; set; }
     public DateTime DeliveryTime { get; set; }
 }
+
