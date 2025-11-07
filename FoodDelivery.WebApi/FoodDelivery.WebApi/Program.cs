@@ -73,25 +73,33 @@ app.MapPut("/profile/{email}", (string email, User updated) =>
     return Results.Ok(user);
 });
 
-app.MapGet("/menu", (string? sortBy) =>
+// FEATURE-MENU-SORTING COMMIT #1: Added category filtering to menu
+app.MapGet("/menu", (string? sortBy, string? category) =>
 {
-    IEnumerable<MenuItem> sorted = menu;
+    IEnumerable<MenuItem> filtered = menu;
 
+    // Filter by category
+    if (!string.IsNullOrWhiteSpace(category))
+    {
+        filtered = filtered.Where(m => m.Category.Equals(category, StringComparison.OrdinalIgnoreCase));
+    }
+
+    // Sort results
     if (!string.IsNullOrEmpty(sortBy))
     {
-        sorted = sortBy.ToLower() switch
+        filtered = sortBy.ToLower() switch
         {
-            "name_asc" => menu.OrderBy(m => m.Name),
-            "name_desc" => menu.OrderByDescending(m => m.Name),
-            "price_asc" => menu.OrderBy(m => m.Price),
-            "price_desc" => menu.OrderByDescending(m => m.Price),
-            "rating_asc" => menu.OrderBy(m => m.Rating),
-            "rating_desc" => menu.OrderByDescending(m => m.Rating),
-            _ => menu
+            "name_asc" => filtered.OrderBy(m => m.Name),
+            "name_desc" => filtered.OrderByDescending(m => m.Name),
+            "price_asc" => filtered.OrderBy(m => m.Price),
+            "price_desc" => filtered.OrderByDescending(m => m.Price),
+            "rating_asc" => filtered.OrderBy(m => m.Rating),
+            "rating_desc" => filtered.OrderByDescending(m => m.Rating),
+            _ => filtered
         };
     }
 
-    var result = sorted.Select(m => new
+    var result = filtered.Select(m => new
     {
         m.Id,
         m.Name,
@@ -103,6 +111,7 @@ app.MapGet("/menu", (string? sortBy) =>
 
     return Results.Ok(result);
 });
+//Add category filtering to /menu endpoint
 
 
 // Cart
