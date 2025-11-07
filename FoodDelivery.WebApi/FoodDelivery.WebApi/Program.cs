@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -119,6 +121,67 @@ app.MapPut("/profile/{email}", (string email, User updated) =>
     return Results.Ok(user);
 });
 
+// FEATURE-PROFILE COMMIT #4: Added profile summary and user activity endpoints
+
+// 📊 Summary of all users
+app.MapGet("/profiles/summary", () =>
+{
+    if (!users.Any())
+    {
+        return Results.Ok(new
+        {
+            TotalUsers = 0,
+            OldestUser = "N/A",
+            YoungestUser = "N/A",
+            AverageAge = "N/A"
+        });
+    }
+
+    var today = DateTime.Today;
+
+    var userAges = users.Select(u => today.Year - u.BirthDate.Year -
+        (u.BirthDate.Date > today.AddYears(-(today.Year - u.BirthDate.Year)) ? 1 : 0));
+
+    var summary = new
+    {
+        TotalUsers = users.Count,
+        OldestUser = users.OrderBy(u => u.BirthDate).First().Name,
+        YoungestUser = users.OrderByDescending(u => u.BirthDate).First().Name,
+        AverageAge = Math.Round(userAges.Average(), 1)
+    };
+
+    return Results.Ok(summary);
+});
+
+// 🕒 Simulated activity tracking
+var userLastActivity = new Dictionary<string, DateTime>();
+
+// Simulate login event
+app.MapPost("/profile/{email}/login", (string email) =>
+{
+    var user = users.FirstOrDefault(u => u.Email == email);
+    if (user == null)
+        return Results.NotFound($"User with email {email} not found.");
+
+    userLastActivity[email] = DateTime.Now;
+    return Results.Ok(new { Message = $"User {email} logged in at {DateTime.Now}" });
+});
+
+// Retrieve last login info
+app.MapGet("/profile/{email}/activity", (string email) =>
+{
+    if (!userLastActivity.ContainsKey(email))
+        return Results.NotFound($"No recent activity found for {email}.");
+
+    return Results.Ok(new
+    {
+        Email = email,
+        LastLogin = userLastActivity[email],
+        Status = "Active"
+    });
+});
+
+
 app.MapGet("/menu", (string? sortBy, string? category) =>
 // Combined /menu endpoints with search, sorting, filtering, vegetarian, and top-rated options
 app.MapGet("/menu", (string? search, string? sortBy, string? category) =>
@@ -138,7 +201,7 @@ app.MapGet("/menu", (string? search, string? sortBy, string? category) =>
     return Results.Ok(result);
 });
 
-// FEATURE-PROFILE COMMIT #2: Added delete user profile endpoint
+
 app.MapDelete("/profile/{email}", (string email) =>
 {
     var user = users.FirstOrDefault(u => u.Email == email);
@@ -197,7 +260,7 @@ app.MapGet("/cart/{email}", (string email) =>
 // Orders
 app.MapPost("/orders/{email}", (string email) =>
 {
-    // MAIN COMMIT #3: Validate delivery time using helper
+   
     if (!FoodDelivery.WebApi.Utils.ValidationHelper.IsValidDeliveryTime(DateTime.Now.AddHours(1)))
         return Results.BadRequest("Invalid delivery time (must be at least 30 minutes ahead)");
 
