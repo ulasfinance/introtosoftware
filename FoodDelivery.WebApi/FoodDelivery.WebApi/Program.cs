@@ -137,6 +137,18 @@ app.MapGet("/profiles", () =>
     return Results.Ok(result);
 });
 
+// FEATURE-PROFILE COMMIT #2: Added delete user profile endpoint
+app.MapDelete("/profile/{email}", (string email) =>
+{
+    var user = users.FirstOrDefault(u => u.Email == email);
+    if (user == null)
+        return Results.NotFound($"User with email {email} not found.");
+
+    users.Remove(user);
+    return Results.Ok(new { Message = $"Profile for {email} deleted successfully." });
+});
+
+
 
 app.MapGet("/menu", (string? search) =>
 {
