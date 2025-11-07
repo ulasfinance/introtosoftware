@@ -119,8 +119,9 @@ app.MapPut("/profile/{email}", (string email, User updated) =>
     return Results.Ok(user);
 });
 
-// FEATURE-PROFILE COMMIT #1: Added endpoint for all user profiles
-app.MapGet("/profiles", () =>
+app.MapGet("/menu", (string? sortBy, string? category) =>
+// Combined /menu endpoints with search, sorting, filtering, vegetarian, and top-rated options
+app.MapGet("/menu", (string? search, string? sortBy, string? category) =>
 {
     if (!users.Any())
         return Results.NotFound("No users found");
