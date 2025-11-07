@@ -73,25 +73,29 @@ app.MapPut("/profile/{email}", (string email, User updated) =>
     return Results.Ok(user);
 });
 
-// ✅ Updated MENU endpoint (Commit #2)
-app.MapGet("/menu", (bool? vegetarian) =>
+app.MapGet("/menu", (string? search) =>
 {
-    var filtered = menu.AsEnumerable();
-    if (vegetarian.HasValue && vegetarian.Value)
-        filtered = filtered.Where(m => m.Vegetarian);
+    IEnumerable<MenuItem> filtered = menu;
+
+    if (!string.IsNullOrWhiteSpace(search))
+    {
+        filtered = menu.Where(m => m.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+                                 || m.Category.Contains(search, StringComparison.OrdinalIgnoreCase));
+    }
 
     var result = filtered.Select(m => new
     {
         m.Id,
         m.Name,
         m.Category,
+        m.Vegetarian,
         m.Rating,
-        Vegetarian = m.Vegetarian ? "Yes" : "No",
         Price = $"${m.Price:0.00}"
     });
 
     return Results.Ok(result);
 });
+
 
 // Cart
 app.MapPost("/cart/{email}/{itemId}", (string email, int itemId) =>
