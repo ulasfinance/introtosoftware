@@ -73,18 +73,17 @@ app.MapPut("/profile/{email}", (string email, User updated) =>
     return Results.Ok(user);
 });
 
-// FEATURE-MENU-SORTING COMMIT #1: Added category filtering to menu
 app.MapGet("/menu", (string? sortBy, string? category) =>
 {
     IEnumerable<MenuItem> filtered = menu;
 
-    // Filter by category
+    // Filter by category if provided
     if (!string.IsNullOrWhiteSpace(category))
     {
         filtered = filtered.Where(m => m.Category.Equals(category, StringComparison.OrdinalIgnoreCase));
     }
 
-    // Sort results
+    // Apply sorting if provided
     if (!string.IsNullOrEmpty(sortBy))
     {
         filtered = sortBy.ToLower() switch
@@ -100,6 +99,37 @@ app.MapGet("/menu", (string? sortBy, string? category) =>
     }
 
     var result = filtered.Select(m => new
+    {
+        m.Id,
+        m.Name,
+        m.Category,
+        m.Vegetarian,
+        m.Rating,
+        Price = $"${m.Price:0.00}"
+    });
+
+    return Results.Ok(result);
+});
+
+// Quick endpoint for vegetarian dishes only
+app.MapGet("/menu/vegetarian", () =>
+{
+    var vegetarianMenu = menu
+        .Where(m => m.Vegetarian)
+        .Select(m => new
+        {
+            m.Id,
+            m.Name,
+            m.Category,
+            m.Rating,
+            Price = $"${m.Price:0.00}"
+        });
+
+    return Results.Ok(vegetarianMenu);
+});
+
+
+var result = filtered.Select(m => new
     {
         m.Id,
         m.Name,
