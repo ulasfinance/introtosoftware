@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -28,7 +28,9 @@ var users = new List<User>();
 var menu = new List<MenuItem>
 {
     new MenuItem { Id = 1, Name = "Pizza", Price = 10.99, Category = "Italian", Vegetarian = false, Rating = 4.5 },
-    new MenuItem { Id = 2, Name = "Veggie Burger", Price = 8.49, Category = "American", Vegetarian = true, Rating = 4.8 }
+    new MenuItem { Id = 2, Name = "Veggie Burger", Price = 8.49, Category = "American", Vegetarian = true, Rating = 4.8 },
+    new MenuItem { Id = 3, Name = "Pasta", Price = 12.29, Category = "Italian", Vegetarian = true, Rating = 4.6 },
+    new MenuItem { Id = 4, Name = "Steak", Price = 15.99, Category = "Grill", Vegetarian = false, Rating = 4.7 }
 };
 var carts = new Dictionary<string, List<MenuItem>>();
 var orders = new List<Order>();
@@ -71,8 +73,25 @@ app.MapPut("/profile/{email}", (string email, User updated) =>
     return Results.Ok(user);
 });
 
-// Menu
-app.MapGet("/menu", () => Results.Ok(menu));
+// ✅ Updated MENU endpoint (Commit #2)
+app.MapGet("/menu", (bool? vegetarian) =>
+{
+    var filtered = menu.AsEnumerable();
+    if (vegetarian.HasValue && vegetarian.Value)
+        filtered = filtered.Where(m => m.Vegetarian);
+
+    var result = filtered.Select(m => new
+    {
+        m.Id,
+        m.Name,
+        m.Category,
+        m.Rating,
+        Vegetarian = m.Vegetarian ? "Yes" : "No",
+        Price = $"${m.Price:0.00}"
+    });
+
+    return Results.Ok(result);
+});
 
 // Cart
 app.MapPost("/cart/{email}/{itemId}", (string email, int itemId) =>
@@ -165,4 +184,3 @@ record Order
     public string Status { get; set; }
     public DateTime DeliveryTime { get; set; }
 }
-// This marks the beginning of the project mainline development.
