@@ -45,13 +45,59 @@ app.MapPost("/register", (User user) =>
     return Results.Ok(new { Token = Guid.NewGuid().ToString() });
 });
 
-// Login
+// FEATURE-AUTH: Fake JWT helper
+string GenerateFakeToken(string email)
+{
+    return Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{email}:{Guid.NewGuid()}"));
+}
+
+// FEATURE-AUTH: Decode fake JWT
+string? DecodeFakeToken(string token)
+{
+    try
+    {
+        var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(token));
+        return decoded.Split(':')[0];
+    }
+    catch
+    {
+        return null;
+    }
+}
+
+// FEATURE-AUTH COMMIT #1: Login endpoint with fake JWT generator
 app.MapPost("/login", (LoginRequest req) =>
 {
     var user = users.FirstOrDefault(u => u.Email == req.Email && u.Password == req.Password);
-    return user == null
-        ? Results.Unauthorized()
-        : Results.Ok(new { Token = Guid.NewGuid().ToString() });
+    if (user == null)
+        return Results.Unauthorized();
+
+    var token = GenerateFakeToken(user.Email);
+    return Results.Ok(new
+    {
+        Token = token,
+        Message = "Login successful - fake JWT generated"
+    });
+});
+
+// FEATURE-AUTH COMMIT #2: Protected /me endpoint to verify token
+app.MapGet("/me", (string token) =>
+{
+    var email = DecodeFakeToken(token);
+    if (email == null)
+        return Results.Unauthorized();
+
+    return Results.Ok(new { AuthenticatedUser = email });
+});
+
+// FEATURE-AUTH COMMIT #3: Added logout endpoint to clear fake token
+app.MapPost("/logout", (string token) =>
+{
+    var email = DecodeFakeToken(token);
+    if (email == null)
+        return Results.Unauthorized();
+
+    return Results.Ok(new { Message = $"User {email} logged out successfully" });
 });
 
 // Profile
