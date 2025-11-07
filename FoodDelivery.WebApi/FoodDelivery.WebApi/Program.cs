@@ -165,3 +165,5 @@ record Order
     public string Status { get; set; }
     public DateTime DeliveryTime { get; set; }
 }
+
+// feature-auth: start implementing fake JWT logic
