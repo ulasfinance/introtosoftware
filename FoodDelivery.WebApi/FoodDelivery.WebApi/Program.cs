@@ -120,37 +120,16 @@ app.MapPut("/profile/{email}", (string email, User updated) =>
 });
 
 app.MapGet("/menu", (string? sortBy, string? category) =>
+// Combined /menu endpoints with search, sorting, filtering, vegetarian, and top-rated options
+app.MapGet("/menu", (string? search, string? sortBy, string? category) =>
 {
     IEnumerable<MenuItem> filtered = menu;
 
     // 🔍 Search by name or category
     if (!string.IsNullOrWhiteSpace(search))
     {
-        filtered = filtered.Where(m =>
-            m.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-            m.Category.Contains(search, StringComparison.OrdinalIgnoreCase));
-    }
-
-    // 🗂️ Filter by category
-    if (!string.IsNullOrWhiteSpace(category))
-    {
         filtered = menu.Where(m => m.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
                                  || m.Category.Contains(search, StringComparison.OrdinalIgnoreCase));
-    }
-
-    // Apply sorting if provided
-    if (!string.IsNullOrEmpty(sortBy))
-    {
-        filtered = sortBy.ToLower() switch
-        {
-            "name_asc" => filtered.OrderBy(m => m.Name),
-            "name_desc" => filtered.OrderByDescending(m => m.Name),
-            "price_asc" => filtered.OrderBy(m => m.Price),
-            "price_desc" => filtered.OrderByDescending(m => m.Price),
-            "rating_asc" => filtered.OrderBy(m => m.Rating),
-            "rating_desc" => filtered.OrderByDescending(m => m.Rating),
-            _ => filtered
-        };
     }
 
     var result = filtered.Select(m => new
@@ -166,7 +145,7 @@ app.MapGet("/menu", (string? sortBy, string? category) =>
     return Results.Ok(result);
 });
 
-// Quick endpoint for vegetarian dishes only
+// 🌱 Vegetarian-only quick filter
 app.MapGet("/menu/vegetarian", () =>
 {
     var vegetarianMenu = menu
@@ -183,6 +162,7 @@ app.MapGet("/menu/vegetarian", () =>
     return Results.Ok(vegetarianMenu);
 });
 
+// ⭐ Top-rated menu items
 app.MapGet("/menu/top-rated", () =>
 {
     var topRated = menu
@@ -198,20 +178,6 @@ app.MapGet("/menu/top-rated", () =>
         });
 
     return Results.Ok(topRated);
-});
-
-
-var result = filtered.Select(m => new
-    {
-        m.Id,
-        m.Name,
-        m.Category,
-        m.Vegetarian,
-        m.Rating,
-        Price = $"${m.Price:0.00}"
-    });
-
-    return Results.Ok(result);
 });
 
 
