@@ -295,6 +295,23 @@ app.MapGet("/about", () =>
     return Results.Ok(info);
 });
 
+app.MapPost("/support", (SupportRequest req) =>
+{
+    if (string.IsNullOrWhiteSpace(req.Email) || string.IsNullOrWhiteSpace(req.Message))
+        return Results.BadRequest("Email and message are required.");
+
+    return Results.Ok(new
+    {
+        Status = "Received",
+        ConfirmationId = Guid.NewGuid(),
+        ReceivedAt = DateTime.Now,
+        Message = $"Support request from {req.Email} received successfully."
+    });
+});
+
+record SupportRequest(string Email, string Message);
+
+
 
 
 app.Run();
